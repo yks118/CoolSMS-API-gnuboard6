@@ -1,0 +1,166 @@
+{% if sent['data'].__len__() > 0 %}
+    {% for row in sent['data'] %}
+<div class="sms-data-wrap">
+        {% if row['status'] == '2' %}
+    <table class="sms-data">
+        <tbody>
+            <tr>
+                <th>발송 결과</th>
+                <td>
+                    {% if row['result_code'] == '00' %}
+                    <span class="text-true">{{ row['result_message'] }}</span>
+                    {% else %}
+                    <span class="text-false">{{ row['result_message'] }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>발송 타입</th>
+                <td>{{ row['type'] }}</td>
+            </tr>
+            <tr>
+                <th>요청 일시</th>
+                <td>{{ row['accepted_time'] }}</td>
+            </tr>
+            <tr>
+                <th>발송 일시</th>
+                <td>{{ row['sent_time'] | preg_replace('^([0-9]{4})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})$', '\\1-\\2-\\3 \\4:\\5:\\6') }}</td>
+            </tr>
+            <tr>
+                <th>수신 통신사</th>
+                <td>{{ row['carrier'] }}</td>
+            </tr>
+            <tr>
+                <th>수신 번호</th>
+                <td>{{ row['recipient_number'] | preg_replace('^([0-9]{3})([0-9]{3,4})([0-9]{4})$', '\\1-\\2-\\3') }}</td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    {% autoescape off %}
+                        {{ row['text'] | nl2br }}
+                    {% endautoescape %}
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <form method="post" action="/admin/coolsms/send" onsubmit="return confirm('재발송 하시겠습니까?\n기본 발신 번호로 재발송 됩니다.') && onSubmit(this);">
+                        <input type="hidden" name="token" value="">
+                        <input type="hidden" name="sms_to" value="{{ row['recipient_number'] }}">
+                        <input type="hidden" name="sms_text" value="{{ row['text'] }}">
+
+                        <button type="submit" class="button button-submit form-w100">재발송</button>
+                    </form>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+        {% else %}
+    <table class="sms-data">
+        <tbody>
+            <tr>
+                <th>발송 결과</th>
+                <td>
+                    {% if row['result_code'] == '99' %}
+                    <span>{{ row['result_message'] }}</span>
+                    {% elif row['result_code'] == '00' %}
+                    <span class="text-true">{{ row['result_message'] }}</span>
+                    {% else %}
+                    <span class="text-false">{{ row['result_message'] }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>발송 타입</th>
+                <td>{{ row['type'] }}</td>
+            </tr>
+            <tr>
+                <th>요청 일시</th>
+                <td>{{ row['accepted_time'] }}</td>
+            </tr>
+            <tr>
+                <th>발송 예약 일시</th>
+                <td>{{ row['scheduled_time'] }}</td>
+            </tr>
+            <tr>
+                <th>수신 번호</th>
+                <td>{{ row['recipient_number'] | preg_replace('^([0-9]{3})([0-9]{3,4})([0-9]{4})$', '\\1-\\2-\\3') }}</td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    {% autoescape off %}
+                        {{ row['text'] | nl2br }}
+                    {% endautoescape %}
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    {% if row['result_code'] == '99' %}
+                    <form method="post" onsubmit="return confirm('예약 발송을 취소하시겠습니까?');">
+                        <input type="hidden" name="token" value="">
+                        <input type="hidden" name="message_id" value="{{ row['message_id'] }}">
+                        <input type="hidden" name="group_id" value="{{ row['group_id'] }}">
+
+                        <button type="submit" class="button button-cancel form-w100">예약 취소</button>
+                    </form>
+                    {% else %}
+                    <form method="post" action="/admin/coolsms/send" onsubmit="return confirm('재발송 하시겠습니까?\n기본 발신 번호로 재발송 됩니다.') && onSubmit(this);">
+                        <input type="hidden" name="token" value="">
+                        <input type="hidden" name="sms_to" value="{{ row['recipient_number'] }}">
+                        <input type="hidden" name="sms_datetime" value="{{ row['scheduled_time'] }}">
+                        <input type="hidden" name="sms_text" value="{{ row['text'] }}">
+
+                        <button type="submit" class="button button-submit form-w100">재발송</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+        </tbody>
+    </table>
+        {% endif %}
+</div>
+    {% endfor %}
+
+    {% if sent['total_count'] > sent['list_count'] %}
+<ul class="pagination">
+        {% if sent['page'] > 10 %}
+    <li>
+        <a href="javascript:httpBuildQuery({page: 1});">
+            <i class="fa fa-angle-double-left fa-fw"></i>
+        </a>
+    </li>
+    <li>
+        <a href="javascript:httpBuildQuery({page: pagination['start'] - 10});">
+            <i class="fa fa-angle-left fa-fw"></i>
+        </a>
+    </li>
+        {% endif %}
+
+        {% for i in range(pagination['start'], pagination['showEnd']) %}
+            {% if sent['page'] == i %}
+    <li class="active">
+        <a href="javascript:void(0);">{{ i }}</a>
+    </li>
+            {% else %}
+    <li>
+        <a href="javascript:httpBuildQuery({page: {{i}}});">{{ i }}</a>
+    </li>
+            {% endif %}
+        {% endfor %}
+
+        {% if pagination['end'] > 10 and pagination['end'] != pagination['showEnd'] %}
+    <li>
+        <a href="javascript:httpBuildQuery({page: pagination['start'] + 10});">
+            <i class="fa fa-angle-right fa-fw"></i>
+        </a>
+    </li>
+    <li>
+        <a href="javascript:httpBuildQuery({page: pagination['end']});">
+            <i class="fa fa-angle-double-right fa-fw"></i>
+        </a>
+    </li>
+        {% endif %}
+</ul>
+    {% endif %}
+{% else %}
+<div class="no-data">데이터가 존재하지 않습니다.</div>
+{% endif %}

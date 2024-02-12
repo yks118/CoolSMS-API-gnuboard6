@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block head %}
+    <link rel="stylesheet" href="/plugin/coolsms/static/css/coolsms-light.min.css" media="(prefers-color-scheme: light), (prefers-color-scheme: no-preference)">
+    <link rel="stylesheet" href="/plugin/coolsms/static/css/coolsms-dark.min.css" media="(prefers-color-scheme: dark)">
+
+    <script src="/plugin/coolsms/static/js/coolsms.functions.min.js"></script>
+    <script src="/plugin/coolsms/static/js/coolsms.min.js"></script>
+{% endblock %}
+
+{% block title %}
+    {{ title }}
+{% endblock %}
+
+{% block subtitle %}
+    {{ title }}
+{% endblock %}
+
+{% block content %}
+    <div id="coolsms-wrap">
+        <ul class="status-bar">
+            <li class="title">서버 상태 ({{ status['registdate'] }})</li>
+            <li>SMS : {{ status['sms_average'] }}초</li>
+            <li>SK : {{ status['sms_sk_average'] }}초</li>
+            <li>KT : {{ status['sms_kt_average'] }}초</li>
+            <li>LG : {{ status['sms_lg_average'] }}초</li>
+        </ul>
+
+        <div class="status-box">
+            <dl>
+                <dt>글자수 제한</dt>
+
+                {% for type in infos['byte'] %}
+                <dd>
+                    <p>
+                        {{ infos['byte'][type] | number_format }}
+                        Byte
+                    </p>
+                    <small>{{ type.upper() }}</small>
+                </dd>
+                {% endfor %}
+            </dl>
+
+            <dl>
+                <dt>발송 비용</dt>
+
+                {% for type in infos['charge'] %}
+                <dd>
+                    <p>
+                        {{ infos['charge'][type] | number_format }}
+                        원
+                    </p>
+                    <small>{{ type.upper() }}</small>
+                </dd>
+                {% endfor %}
+            </dl>
+
+            <dl>
+                <dt>
+                    잔여 금액
+                    {% if balance['deferred_payment'] == 'N' %}
+                    선불회원
+                    {% else %}
+                    후불회원
+                    {% endif %}
+                    <a href="https://www.coolsms.co.kr/" target="_blank">
+                        <i class="fa fa-link fa-fw"></i>
+                    </a>
+                </dt>
+
+                <dd>
+                    <p>
+                        {{ balance['cash'] | number_format }}
+                        원
+                    </p>
+                    <small>Cash</small>
+                </dd>
+
+                <dd>
+                    <p>
+                        {{ balance['point'] | number_format }}
+                        원
+                    </p>
+                    <small>Point</small>
+                </dd>
+            </dl>
+
+            <dl>
+                <dt>잔여 건수</dt>
+
+                <dd>
+                    <p>
+                        {{ sms.get_remaining(balance['cash'], balance['point'], 'sms') | number_format }}
+                        건
+                    </p>
+                    <small>SMS</small>
+                </dd>
+
+                <dd>
+                    <p>
+                        {{ sms.get_remaining(balance['cash'], balance['point'], 'lms') | number_format }}
+                        건
+                    </p>
+                    <small>LMS</small>
+                </dd>
+            </dl>
+        </div>
+
+        <div class="sms-box-wrap">
+            <div class="sms-box sms-send">
+                <dl>
+                    <dt>문자 보내기</dt>
+                    <dd>
+                        <form method="post" action="/admin/coolsms/send" onsubmit="return onSubmit(this);">
+                            <input type="hidden" name="token" value="">
+
+                            <div class="form-group form-inline">
+                                <label for="sms_from">발신 번호</label>
+
+                                <div class="form-float">
+                                    <select name="sms_from" id="sms_from" required>
+                                        {% if infos['senderid']['list'].__len__() > 0 %}
+                                            {% for row in infos['senderid']['list'] %}
+                                        <option value="{{ row['phone_number'] }}">{{ row['phone_number'] | phone_number }}</option>
+                                            {% endfor %}
+                                        {% else %}
+                                        <option value="">발신 번호를 등록해주세요.</option>
+                                        {% endif %}
+                                    </select>
+                                    <i class="form-helper"></i>
+                                </div>
+                            </div>
+
+                            <div class="form-group form-inline">
+                                <label for="sms_to">수신 번호</label>
+
+                                <div class="form-float">
+                                    <input type="text" name="sms_to" id="sms_to" placeholder="010-0000-0000" value="" required>
+                                    <i class="form-helper"></i>
+                                </div>
+                            </div>
+
+                            <div class="form-group form-inline">
+                                <label for="sms_datetime">예약 일시</label>
+
+                                <div class="form-float">
+                                    <input type="text" name="sms_datetime" id="sms_datetime" placeholder="{{ now.strftime('%Y-%m-%d %H:%M:%S') }}" value="">
+                                    <i class="form-helper"></i>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <div class="form-float">
+                                    <textarea
+                                        name="sms_text" id="sms_text" title="" placeholder="문자 내용" required
+                                        onkeyup="setSmsByte(this.value, document.getElementById('sms-byte'));"
+                                    ></textarea>
+                                    <i class="form-helper"></i>
+                                </div>
+
+                                <small class="sms-byte" id="sms-byte">0 Byte</small>
+                            </div>
+
+                            <button type="submit" class="button button-submit button-large form-w100">문자 발송</button>
+                        </form>
+                    </dd>
+                </dl>
+            </div>
+
+            <div class="sms-box sms-list">
+                <dl>
+                    <dt>
+                        <!--
+                        최근 발송 10건
+                        <small>({{ date_start }} ~ {{ date_end }})</small>
+                        -->
+                        {{ date_start }} ~ {{ date_end }}
+
+                        <a href="/admin/coolsms/search">
+                            <i class="fa fa-search fa-fw"></i>
+                        </a>
+                    </dt>
+                    <dd class="colspan-2">{% include template_path + '/admin/list.html' %}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+{% endblock %}
